@@ -27,10 +27,10 @@ n_layer = hyperparams['n_layer']
 dropout = hyperparams['dropout']
 
 # Device - MPS
-device = torch.device("mps" if torch.backends.mps.is_available() and torch.backends.mps.is_built() else "cpu")
+# device = torch.device("mps" if torch.backends.mps.is_available() and torch.backends.mps.is_built() else "cpu")
 
 # Device - CUDA
-# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Train and test splits
 data = [torch.tensor(encode(mutations_data[i]), dtype=torch.long) for i in range(len(mutations_data))]

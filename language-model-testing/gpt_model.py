@@ -1,6 +1,11 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.cuda.amp import GradScaler, autocast
+from torch.utils.data import DataLoader, TensorDataset
+from torch.nn.utils.rnn import pad_sequence
+
+scaler = GradScaler()
 # import random
 
 # def generate_sequences(num_sequences, max_length, N):
@@ -43,13 +48,16 @@ for line in data_lines:
         
         sequences.append(encode(mut_seq_tuples))
         
+sequences = [seq for seq in sequences if len(seq) > 1]
+
+print("Finished generating sequences")
 
 def preprocess_data(sequences):
     X = []
     Y = []
     for seq in sequences:
-        X.append(seq[:-1])
-        Y.append(seq[-1])
+        X.append(seq[:-1] if (type(seq[:-1]) == list) else [seq[:-1]])
+        Y.append([seq[-1]])
     return X, Y
 
 X, Y = preprocess_data(sequences)
@@ -154,10 +162,23 @@ from sklearn.model_selection import train_test_split
 
 X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2)
 
+print("Finished splitting data")
+
 # Hyperparameters
 num_epochs = 10
 learning_rate = 3e-4
-batch_size = 64
+batch_size = 16
+
+# Convert sequences to tensors
+tensorized_sequences = [torch.tensor(seq, dtype=torch.long) for seq in X_train]
+tensorized_targets = [torch.tensor(seq, dtype=torch.long) for seq in Y_train]
+
+# Pad sequences
+padded_sequences = pad_sequence(tensorized_sequences, batch_first=True)
+padded_targets = pad_sequence(tensorized_targets, batch_first=True)
+
+dataset = TensorDataset(padded_sequences, padded_targets)
+dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
 # Loss and optimizer
 criterion = nn.CrossEntropyLoss()
@@ -165,30 +186,38 @@ optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
 
 # Training Loop
 model.train()
+print("Starting training loop")
+accumulation_steps = 4  # adjust as needed
 
 for epoch in range(num_epochs):
     total_loss = 0.0
-    for i in range(0, len(X_train), batch_size):
-        batch_sequences = X_train[i:i+batch_size]
-        
-        inputs = [torch.tensor(seq[:-1], dtype=torch.long) for seq in batch_sequences]  # excluding last element for input
-        targets = [torch.tensor(seq[1:], dtype=torch.long) for seq in batch_sequences] # excluding first element for target
+    optimizer.zero_grad()
 
-        inputs = nn.utils.rnn.pad_sequence(inputs, batch_first=True).to(device)
-        targets = nn.utils.rnn.pad_sequence(targets, batch_first=True).to(device)
-        
-        optimizer.zero_grad()
-        outputs = model(inputs)
-        
-        # Reshape outputs and targets for loss computation
-        loss = criterion(outputs.view(-1, vocab_size), targets.view(-1))
-        loss.backward()
-        optimizer.step()
-        
-        total_loss += loss.item()
-        
-    avg_train_loss = total_loss / len(X_train)
+    for i, (inputs, targets) in enumerate(dataloader):
+        inputs, targets = inputs.to(device), targets.to(device)
+
+        with autocast():  # enable mixed precision
+            outputs = model(inputs)
+            last_outputs = outputs[:, -1, :]  # This takes the last output from each sequence
+            loss = criterion(last_outputs, targets.squeeze(1))
+            loss = loss / accumulation_steps  # for gradient accumulation
+
+        scaler.scale(loss).backward()
+
+        if (i+1) % accumulation_steps == 0:  # update weights every accumulation_steps
+            scaler.step(optimizer)
+            scaler.update()
+            optimizer.zero_grad()
+
+        total_loss += loss.item() * accumulation_steps  # remove the normalization by accumulation_steps for total loss
+
+        # Gradient clipping
+        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+
+    avg_train_loss = total_loss / len(dataloader)
     print(f"Epoch [{epoch + 1}/{num_epochs}], Loss: {avg_train_loss:.4f}")
+
+    torch.cuda.empty_cache()  # clear CUDA cache
 
 # Testing Loop
 model.eval()
