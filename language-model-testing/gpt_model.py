@@ -4,6 +4,7 @@ import torch.nn.functional as F
 from torch.cuda.amp import GradScaler, autocast
 from torch.utils.data import DataLoader, TensorDataset
 from torch.nn.utils.rnn import pad_sequence
+import tqdm
 
 scaler = GradScaler()
 # import random
@@ -193,7 +194,7 @@ for epoch in range(num_epochs):
     total_loss = 0.0
     optimizer.zero_grad()
 
-    for i, (inputs, targets) in enumerate(dataloader):
+    for i, (inputs, targets) in enumerate(tqdm.tqdm(dataloader)):
         inputs, targets = inputs.to(device), targets.to(device)
 
         with autocast():  # enable mixed precision
