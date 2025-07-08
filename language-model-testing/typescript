@@ -1,11 +1,0 @@
-Script started on 2023-08-15 12:25:58+00:00 [TERM="xterm" TTY="/dev/pts/0" COLUMNS="123" LINES="43"]
-[r[m[2J[H[?7h[?1;4;6l[?1049h[22;0;0t[4l[?1h=[0m(B[1;43r[H[2J[H[2Jgikrishnan@dsmlp-jupyter-gikrishnan:~/private/Turakhia_Lab/mutation-language-model/language-model-testing$ python gpt_model.py
-Finished generating sequences
-Using device: cuda
-Finished splitting data
-Starting training loop
-Epoch [1/10], Loss: 9.8326
-[?1l>[43;1H
-[?1049l[23;0;0t[detached from 1566.pts-1.dsmlp-jupyter-gikrishnan]
-[7mUtmp slot not found -> not removed[27m                                      [35A
-Script done on 2023-08-15 12:26:14+00:00 [COMMAND_EXIT_CODE="0"]

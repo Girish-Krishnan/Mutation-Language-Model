@@ -6,13 +6,17 @@ This repository contains a simple Transformer based language model trained on SA
 
 The training data is a text file where each line contains a comma separated list of mutations. A mutation is represented as a position and the substituted base, for example `266T`.
 
-You can build this file yourself from a `paths.txt` file using the dataset preparation utility:
+Firstly, you can download `paths.txt` as follows. `paths.txt` must contain colon separated lines where the second field holds the comma separated mutations.
+
+```bash
+wget --no-check-certificate "https://docs.google.com/uc?export=download&id=17Ca3N3ZZutAW7iYbZ4UmClzWvW9zHDhL" -O paths.txt
+```
+
+Then, you can prepare the dataset from `paths.txt` using the provided script:
 
 ```bash
 python mlm/prepare_dataset.py paths.txt data.txt
 ```
-
-`paths.txt` must contain colon separated lines where the second field holds the comma separated mutations.
 
 ## Training
 

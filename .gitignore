@@ -6,3 +6,4 @@ model.pt
 *.swp
 *.tmp
 *.txt
+*.DS_Store
